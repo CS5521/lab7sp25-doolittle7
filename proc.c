@@ -127,6 +127,9 @@ userinit(void)
   p = allocproc();
   
   initproc = p;
+  initproc->ticks = 0;
+  initproc->tickets = 10;
+
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
@@ -201,6 +204,8 @@ fork(void)
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
+  np->ticks = 0;
+  np->tickets = np->parent->tickets > 10 ? np->parent->tickets : 10;
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
