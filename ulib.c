@@ -113,10 +113,10 @@ ps()
   int i; // couldn't tell you when I started doing the pre-declaration, but it makes my code look neater
   pstatTable tab;
   getpinfo(&tab);
-  printf(1, "PID\tTKTS\tSTAT\tNAME\n");
+  printf(1, "PID\tTKTS\tTCKS\tSTAT\tNAME\n");
 
   for (i = 0; i < NPROC; i++) {
     if (tab[i].pid == 0) continue; // iirc there shouldn't be a pid 0
-    printf(1, "%d\t%d\t%c\t%s\n", tab[i].pid, tab[i].tickets, tab[i].state, tab[i].name);
+    printf(1, "%d\t%d\t%d\t%c\t%s\n", tab[i].pid, tab[i].tickets, tab[i].ticks, tab[i].state, tab[i].name);
   }
 }

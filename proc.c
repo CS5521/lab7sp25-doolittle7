@@ -127,8 +127,6 @@ userinit(void)
   p = allocproc();
   
   initproc = p;
-  initproc->ticks = 0;
-  initproc->tickets = 10;
 
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -146,6 +144,8 @@ userinit(void)
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
+  p->ticks = 0;
+  p->tickets = 10;
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
@@ -543,7 +543,7 @@ procdump(void)
  * @param tab pstatTable pointer
  * return 0 if no errors are found, -1 otherwise.
  */
-int
+void
 fillpstat(pstatTable * pstat) {
 
   // Fills a pstat_t table (array of pstat_t structs) with various values from the ptable 
@@ -552,14 +552,13 @@ fillpstat(pstatTable * pstat) {
   struct proc * p;
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if (p->state == UNUSED) continue;
+    if (p->state == UNUSED) continue; // ignore this fella
+    if (p->state > UNUSED) (*pstat)[i].state = procstate_c[p->state - 1]; // I saw a bounty of if statements and figured go little or go little.
     (*pstat)[i].pid = p->pid;
     (*pstat)[i].tickets = p->tickets;
-    (*pstat)[i].state = procstate_c[p->state - 1]; // I saw a bounty of if statements and figured go little or go little.
     (*pstat)[i].ticks = p->ticks;
     int j;
     for (j = 0; j < 16; j++) (*pstat)[i].name[j] = p->name[j]; // pstat_t->name array is of length 16
   }
   release(&ptable.lock);
-  return 0;
 }

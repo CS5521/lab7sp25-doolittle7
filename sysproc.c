@@ -91,13 +91,23 @@ sys_uptime(void)
   return xticks;
 }
 
-extern int fillpstat(pstatTable *);
+extern void fillpstat(pstatTable *);
 
 int
 sys_getpinfo(void)
 {
-  pstatTable * tab;
-  if (argptr(0, (void*)&tab, sizeof(pstatTable)) == -1) return -1;
-  
-  return fillpstat(tab);
+  struct pstatTable * tab;
+  if (argptr(0, (void*)&tab, sizeof(tab))) return -1;
+  fillpstat((pstatTable*)tab);
+  return 0;
+}
+
+int sys_settickets(void)
+{
+  int num;
+  if (argint(0, &num) < 0) return -1;
+  if (num < 10) return -1;
+
+  myproc()->tickets = num;
+  return 0;
 }
