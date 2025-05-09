@@ -8,6 +8,10 @@
 #include "spinlock.h"
 #include "pstat.h"
 
+#define RAND_MAX ((1U << 31) - 1)
+
+static int rseed = 1898888478;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -20,6 +24,7 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
 
 void
 pinit(void)
@@ -331,33 +336,48 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+  int ticketTot, winner, counter, rand;
   for(;;){
     // Enable interrupts on this processor.
     sti();
+    ticketTot = 0; // Refresh the value of total tickets.
+    counter = 0; // pulled from 9.1 pseudocode
 
-    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
+    // Loop over process table to gather total tickets.
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if (p->state != RUNNABLE) continue; // We are not adding unavail procs to the pool
+      ticketTot += p->tickets; // Add tickets to the pool.
+    }
+    if (ticketTot == 0) {
+      release(&ptable.lock);
+      continue; // Go ahead and skip to the next iteration.
+    }
+    rand = random();
+    winner = rand % ticketTot; // Select a winner
 
+    // Loop over process table looking for our winner
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      // Alterations made for lottery.
+      if(p->state != RUNNABLE) continue; // Skip over processes.
+      counter += p->tickets; // also pulled from pseudocode.
+      
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+      if (counter > winner) break;
     }
+    c->proc = p;
+    switchuvm(p);
+    p->state = RUNNING;
+    p->ticks += 1; // increment ticks by ran procs (one at a time :3)
+    swtch(&(c->scheduler), p->context);
+    switchkvm();
+  
+    // Process is done running for now.
+    // It should have changed its p->state before coming back.
+    c->proc = 0;
     release(&ptable.lock);
-
   }
 }
 
@@ -541,11 +561,10 @@ procdump(void)
 
 /*
  * @param tab pstatTable pointer
- * return 0 if no errors are found, -1 otherwise.
  */
 void
-fillpstat(pstatTable * pstat) {
-
+fillpstat(pstatTable * pstat)
+{
   // Fills a pstat_t table (array of pstat_t structs) with various values from the ptable 
   int i = 0;
   char procstate_c[5] = {'E','S','A','R','Z'}; // For mapping the enum procstates to chars
@@ -561,4 +580,11 @@ fillpstat(pstatTable * pstat) {
     for (j = 0; j < 16; j++) (*pstat)[i].name[j] = p->name[j]; // pstat_t->name array is of length 16
   }
   release(&ptable.lock);
+}
+
+// lifted directly from the asulearn page
+int
+random()
+{
+  return rseed = (rseed * 1103515245 + 12345) & RAND_MAX;
 }
