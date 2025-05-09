@@ -578,6 +578,7 @@ fillpstat(pstatTable * pstat)
     (*pstat)[i].ticks = p->ticks;
     int j;
     for (j = 0; j < 16; j++) (*pstat)[i].name[j] = p->name[j]; // pstat_t->name array is of length 16
+    i++; // Probably the funniest loop mistake I've ever made. (never incremented this, no wonder this function only had one entry)
   }
   release(&ptable.lock);
 }
