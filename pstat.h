@@ -14,6 +14,6 @@ typedef struct {
 
 typedef pstat_t pstatTable[NPROC];
 
-void getpinfo(pstatTable *);
+int getpinfo(pstatTable *);
 
 #endif // _PSTAT_H_

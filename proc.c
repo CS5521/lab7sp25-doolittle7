@@ -205,7 +205,7 @@ fork(void)
   *np->tf = *curproc->tf;
 
   np->ticks = 0;
-  np->tickets = np->parent->tickets > 10 ? np->parent->tickets : 10;
+  np->tickets = curproc->tickets > 10 ? curproc->tickets : 10;
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -537,4 +537,29 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+/*
+ * @param tab pstatTable pointer
+ * return 0 if no errors are found, -1 otherwise.
+ */
+int
+fillpstat(pstatTable * pstat) {
+
+  // Fills a pstat_t table (array of pstat_t structs) with various values from the ptable 
+  int i = 0;
+  char procstate_c[5] = {'E','S','A','R','Z'}; // For mapping the enum procstates to chars
+  struct proc * p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->state == UNUSED) continue;
+    (*pstat)[i].pid = p->pid;
+    (*pstat)[i].tickets = p->tickets;
+    (*pstat)[i].state = procstate_c[p->state - 1]; // I saw a bounty of if statements and figured go little or go little.
+    (*pstat)[i].ticks = p->ticks;
+    int j;
+    for (j = 0; j < 16; j++) (*pstat)[i].name[j] = p->name[j]; // pstat_t->name array is of length 16
+  }
+  release(&ptable.lock);
+  return 0;
 }
